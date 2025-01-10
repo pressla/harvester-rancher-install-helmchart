@@ -1,0 +1,111 @@
+cluster_name: rke2-mgmt
+control_plane:
+  cpu_count: 8
+  files:
+  - content: |
+      apiVersion: helm.cattle.io/v1
+      kind: HelmChart
+      metadata:
+        name: cert-manager
+        namespace: default      
+      spec:
+        bootstrap: true
+        targetNamespace: cert-manager
+        createNamespace: true
+        valuesContent: |-
+          securityContext:
+            runAsNonRoot: true
+          crds:
+            enabled: true
+        version: v1.16.1
+        repo: https://charts.jetstack.io
+        chart: cert-manager
+    owner: root
+    path: /var/lib/rancher/rke2/server/manifests/certmanager.yaml
+  - content: |
+      apiVersion: helm.cattle.io/v1
+      kind: HelmChart
+      metadata:
+        name: rancher
+        namespace: default      
+      spec:
+        bootstrap: false
+        targetNamespace: cattle-system
+        createNamespace: true
+        set:
+          hostname: rancher.lab.sienarfleet.systems
+          replicas: 3
+          bootstrapPassword: admin
+        valuesContent: |-
+          global:
+            cattle:
+              psp:
+                enabled: false
+          ingress:
+            tls:
+              source: rancher
+        repo: https://releases.rancher.com/server-charts/stable
+        chart: rancher
+        version: v2.10.1
+    owner: root
+    path: /var/lib/rancher/rke2/server/manifests/rancher.yaml
+  ipam: static
+  loadbalancer_gateway: 10.2.0.1
+  loadbalancer_subnet: 10.2.0.0/24
+  memory_gb: 16
+  network:
+  - |
+    network:
+      version: 2
+      renderer: networkd
+      ethernets:
+        enp1s0:
+          dhcp4: no
+          addresses: [ "10.2.0.21/24" ]
+          gateway4: 10.2.0.1
+          nameservers:
+            addresses: 
+            - 10.2.0.1
+  - |
+    network:
+      version: 2
+      renderer: networkd
+      ethernets:
+        enp1s0:
+          dhcp4: no
+          addresses: [ "10.2.0.22/24" ]
+          gateway4: 10.2.0.1
+          nameservers:
+            addresses: 
+            - 10.2.0.1
+  - |
+    network:
+      version: 2
+      renderer: networkd
+      ethernets:
+        enp1s0:
+          dhcp4: no
+          addresses: [ "10.2.0.23/24" ]
+          gateway4: 10.2.0.1
+          nameservers:
+            addresses: 
+            - 10.2.0.1
+  node_count: 3
+  vip: 10.2.0.20
+network_name: lab-workload
+registry_config:
+  configs:
+    rgcrprod.azurecr.us:
+      auth:
+        password: test
+        username: test
+rke2_version: v1.29.6+rke2r1
+ssh_pub_key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDK3vpDMfNKbXTkpOwC77k5xvEpUAcNyJa6pYT17YMbzvHuugSJRiouLElDtpqktto6plkDdrTRXnkDA3aVxUycCl/4IrnCEehlg8LGgFxKASNeXQYL0URIWRDicyJaolg5bFdcu3gYTA0JBtApiebrml6bj9cJGnS8lqRK9wmWIFv5lPICcrZMsw1AIRhghGI5BupUnttD+muHspAiGfjTbiiCvKo3fLmEMQ9pt/46wQuPbzOCVChpJByVG9AKO9IpdkOGgKeuy2y98ZxJIHBAx4B49jDfA8NNfyEBIdgiIvlv6QXgjFbazI5buLYM/RK36kf9JjYNBySZJuA3VMbHnWmWvZYBQUA6ypVMc4Wzvd3hhFmNQn1W+NEHl6v+bCDeo5QIv5dkpIoDgJd8CvWQ42bb2bi7zyO32v2zfaW03eDCeopFAKditMPhjqai0S2W4LRt7dRKEOCvUqPFYqZ99nBk1mmTWG8Gpp7VA/+shn171Yc/wDCwBcEyciqOYNtnW55O3eCiBHsnBcEFKy80zHJ1jckDSluypwBrsooYV5WKS8O+jqGyYfdruJ8oUCPw72b0JHs5AmFCRuhzOU6cZP6Ynghs1SkdVtq722uFjmDUR0X8+hoIZDEWutw6+91YhwnodA3MmGHtInlY+URqdz6TltOMP2X2vSMohnh2zQ==
+system_default_registry: ""
+vm:
+  airgapped_image: false
+  image: ubuntu
+  qemu_agent_enable: true
+  qemu_agent_install: true
+worker:
+  node_count: 0
