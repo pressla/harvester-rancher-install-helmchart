@@ -4,19 +4,33 @@ author: Brian Durden
 email: brian.durden@ranchergovernment.com
 ---
 
-# Three Easy-mode ways of Installing Rancher onto Harvester
-
 ## Intro
-Greetings! We are here to dive into Rancher's Harvester product and explore some of the synergies that emerge when we combine the infrastructure and orchestration layers using a unified API. That unified API is the Kubernetes API. So, instead of using the usual cloud-native tools in our toolbox (Terraform, Ansible, etc), we are going to try to use ONLY Kubernetes to deploy a guest RKE2 cluster onto Harvester and then install Rancher Multi-cluster Manager on that cluster. Ideally we do this with minimal steps and avoid usage of complex bash scripts.
+Greetings! I'm here to dive into Rancher's Harvester product and explore some of the synergies that emerge when we combine the infrastructure and orchestration layers using a unified API. That unified API is the Kubernetes API. So, instead of using the usual cloud-agnostic tools in our toolbox (Terraform, Ansible, etc), we are going to try to use ONLY Kubernetes to deploy a guest RKE2 cluster onto Harvester and then install Rancher Multi-cluster Manager on that cluster. Ideally we do this with minimal steps and avoid usage of complex bash scripts.
 
-I'm going to take a few extra minutes to explain HOW we take a base VM we would use for an RKE2 node and turning it into a Helmchart. I don't want to bog anything down so I'm sticking it in a separate doc that I will link below.
+I'm going to take a few extra minutes to explain HOW we take a base VM we would use for an RKE2 node and turning it into a Helmchart. I don't want to bog anything down so I'm sticking it in a separate doc that I will link below in the appropriate section.
+
+This write-up involves consuming some simple code from a GitHub resource. Currently that repo is located [here](https://github.com/bcdurden/harvester-rancher-install-blog). It is currently private, so email me at `brian.durden@ranchergovernment` for access and send me the email associated with your GitHub account (or your GitHub handle).
+
+### Shout Outs
+Special thanks to these folks for helping me kick around some ideas and offering further insights into how some of the moving parts in Harvester work (in no particular order!): 
+
+* Bryan Gregorious
+* Alejandro Bonilla
+* Adam Toy
+* William Stutt
+* Shaun Deibert
+* Zack Brady
+* Gaurav Mehta
+* Mohamed Belgaied 
 
 ### Table of Contents
 
-* Kubernetes CRDs and Harvester
-* Helm Templating
-* A Simple Helmchart for Harvester
-* Installing Rancher Method 1 (Helm)
+* [Kubernetes CRDs and Harvester](#kubernetes-crds-and-harvester)
+* [Helm Templating](#helm-templating)
+* [A Simple Helmchart for Harvester](#a-simple-helmchart-for-harvester)
+* [Installing Rancher Method 1 (Helm)](#installing-rancher-method-1-helm)
+* [Installing Rancher Method 2 (Fleet)](#installing-rancher-method-2-fleet)
+* [Installing Rancher Method 3 (CAPI)](#installing-rancher-method-3-capi)
 
 ### Dependencies
 There will be minimal dependencies here but the most notable one that you'll need in order to reproduce this demonstration is a running Harvester instance. Harvester can run on nearly anything. [Hop over to github](https://github.com/harvester/harvester/releases/tag/v1.4.0) and grab the iso if you haven't installed it yet.
@@ -25,13 +39,16 @@ Within Harvester, you'll need a VM Network that is routable within your network 
 
 ## Kubernetes CRDs and Harvester
 
-The true power of Kubernetes is not just being able to run containers. Its true power lay in HOW it runs containers. All resources in Kubernetes are defined using a common API. And the controllers, schedulers, etc all operate with objects defined by those APIs via abstraction.
+The true power of Kubernetes is not just being able to run containers. Its true power lay in HOW it runs containers. All resources in Kubernetes are defined using a common API. And the controllers, schedulers, etc all operate with objects defined by those APIs via abstraction. This allows for immense flexibility to 'fit' into a lot of use-cases where more proprietary and closed solutions may have been required in the past.
 
 These APIs are extensible via `CRDs` or `CustomResourceDefinitions`. This allows vendors, like Rancher, to create specific objects for their application within Kubernetes. Using these objects and APIs, an operator can also work with the application using various forms of automation and templating. 
 
-In the end, Kubernetes' true power is how everything that it runs and controls is infrastructure-as-code or configuration-as-code. Harvester is a combination of Kubernetes products and relies on the unified APIs to manage everything it controls. This allows us to do all sorts of VERY cool things that we cannot do within VMware, Nutanix, or OpenStack!
 
-![harvester-diagram](images/harvester_stack.png)
+![Harvester Stack](images/harvester_stack.png)
+
+
+In the end, Kubernetes' true power is how everything that it runs and controls is infrastructure-as-code or configuration-as-code. Harvester, a hardware-decoupled HCI stack, is a combination of Kubernetes products and relies on the unified APIs to manage everything it controls. This allows us to do all sorts of VERY cool things that we cannot do within VMware, Nutanix, or OpenStack!
+
 
 ## Helm Templating
 
@@ -39,9 +56,9 @@ Because everything can be defined by simple `yaml` or `json` configuration in Ku
 
 When defining a full configuration for an application, there will be a lot of data going into those configurations that you might want to hide away from the consumer of your template. You might even want to be able to generate more complex configurations based on small input data. To do this, we can use templating technologies.
 
-![helm-basic](images/helm_diagram.png)
-
 This is where Helm comes in (and tools similar to it) in that it wraps `go-templating` up in a package with some other options and allows you to templatize a complex application configuration.
+
+![Basic Helm Flow](images/helm_diagram.png)
 
 To take a deeper look at Helm, go checkout the [Helm webpage](https://helm.sh) that has a lot of good information for starters. And then with google or ChatGPT you can find many good examples out there of more complex helmcharts.
 
@@ -65,13 +82,14 @@ kubectl delete ValidatingWebhookConfigurations harvester-load-balancer-webhook
 I have hosted that helm chart [here](helm/rke2/) and included a [demo values file](helm/demo_values.yaml) that includes a few things we haven't discussed here. I have embedded the `Cert-Manager` and `Rancher` Helmchart CRDs here as static manifests. This is a simple solution to ensuring these helmcharts are installed as soon as RKE2 enters a `Ready` state. Feel free to edit this file to tailor to your own environment. 
 
 Some notes on what to edit:
-* LoadBalancer values (`control_plane.loadbalancer_gateway` `control_plane.loadbalancer_subnet` `control_plane.vip`) -- ensure your LB IP settings are on the host/mgmt network for now unless you want to add extra routing rules
-* Static IP Network Config (`control_plane.network`) -- note this is an Ubuntu example, Rocky and RHEL look a little different
-* SSH public key (`ssh_pub_key`) -- Ensure you have ownership of the key pair, we'll need it to hop onto the node if something goes wrong
-* VM specs (`control_plane.cpu_count` `control_plane.memory_gb`)
-* Network Name (`network_name`) -- the VM Network you created in Harvester that will host your VMs
-* VM Image Name (`vm.image`) -- the name of the VM image you're using for your nodes.
-* Rancher URL (`control_plane.files[].content`)-- set the embedded rancher URL to a domain you control or at least one you can set in your local `/etc/hosts`
+
+- LoadBalancer values (`control_plane.loadbalancer_gateway` `control_plane.loadbalancer_subnet` `control_plane.vip`) -- ensure your LB IP settings are on the host/mgmt network for now unless you want to add extra routing rules
+- Static IP Network Config (`control_plane.network`) -- note this is an Ubuntu example, Rocky and RHEL look a little different
+- SSH public key (`ssh_pub_key`) -- Ensure you have ownership of the key pair, we'll need it to hop onto the node if something goes wrong
+- VM specs (`control_plane.cpu_count` `control_plane.memory_gb`)
+- Network Name (`network_name`) -- the VM Network you created in Harvester that will host your VMs
+- VM Image Name (`vm.image`) -- the name of the VM image you're using for your nodes.
+- Rancher URL (`control_plane.files[].content`)-- set the embedded rancher URL to a domain you control or at least one you can set in your local `/etc/hosts`
 
 
 ## Installation
@@ -79,7 +97,8 @@ Some notes on what to edit:
 Once we have a good config, let's apply this helmchart to our Harvester cluster!
 
 ```console
-❯ helm install rke2-mgmt -f demo_values.yaml rke2/
+$ cd helm
+$ helm install rke2-mgmt -f demo_values.yaml rke2/
 NAME: rke2-mgmt
 LAST DEPLOYED: Fri Jan 10 14:08:05 2025
 NAMESPACE: default
@@ -89,10 +108,12 @@ TEST SUITE: None
 ```
 
 I can immediately look at my Harvester UI and see 3 VMs starting!
-![vm-start](images/type1/helm-start.png)
+
+![Type1 Method VM Starting](images/type1/helm-start.png)
 
 A few seconds later, Harvester has assigned those VMs to different nodes and the VMs are now booting.
-![vm-boot](images/type1/helm-boot.png)
+
+![Type1 Method VM Booting](images/type1/helm-boot.png)
 
 
 ## Validation 
@@ -116,7 +137,7 @@ chmod 600 kube.yaml
 
 I check the node state here:
 ```console
-❯ kubectl --kubeconfig kube.yaml get nodes
+$ kubectl --kubeconfig kube.yaml get nodes
 NAME             STATUS   ROLES                       AGE   VERSION
 rke2-mgmt-cp-0   Ready    control-plane,etcd,master   11m   v1.29.6+rke2r1
 rke2-mgmt-cp-1   Ready    control-plane,etcd,master   10m   v1.29.6+rke2r1
@@ -125,7 +146,7 @@ rke2-mgmt-cp-2   Ready    control-plane,etcd,master   10m   v1.29.6+rke2r1
 
 Now I check Rancher's state and see that it is running!
 ```console
-❯ kubectl --kubeconfig kube.yaml get po -n cattle-system
+$ kubectl --kubeconfig kube.yaml get po -n cattle-system
 NAME                                         READY   STATUS      RESTARTS        AGE
 helm-operation-bxftn                         0/2     Completed   0               8m13s
 helm-operation-hrwgj                         0/2     Completed   0               8m38s
@@ -143,13 +164,13 @@ system-upgrade-controller-646f9548cc-pkzvk   1/1     Running     0              
 ```
 
 I verify Rancher is up by going to the UI. I configured my URL to be `rancher.lab.sienarfleet.systems`. If I did not have control over my DNS, I would need to make an entry in `/etc/hosts` on my MacBook. But I'm good. So opening the browser reveals the running rancher instance:
-![rancher-boot](images/type1/running_rancher.png)
+![Rancher at Boot screen](images/type1/running_rancher.png)
 
 I set my bootstrap password to `admin` when I setup my helm values, so I add that and sign-in. I then see the Rancher UI for 2.10.1! I've now successfully installed Rancher on a guest RKE2 cluster using a simple helmchart!
-![rancher-running](images/type1/running_rancher2.png)
+![Rancher Running](images/type1/running_rancher2.png)
 
 ## Installing Rancher Method 2 (Fleet)
-This method is new and takes advantage of the new Fleet integration with Harvester. We'll be using the HelmChart we used from the [Method 1]() section here  here. There are two ways to do this, one requires having a git repo available within your envionment (or from the internet if you have access) and the other doesn't require git. 
+This method is new and takes advantage of the new Fleet integration with Harvester. We'll be using the HelmChart we used from the [Method 1](#installing-rancher-method-1-helm) section. There are two ways to do this, one requires having a git repo available within your envionment (or from the internet if you have access) and the other doesn't require git. 
 
 Creating the second version is a bit tedious unless you can create the first version. The reason for this is because the first version uses Fleet's GitOps capability by referencing a remote git repo that contains both the RKE2 helmchart and values. When consumed by `Fleet` this data creates a `Bundle` object inside of Harvester/Fleet. Fleet uses Bundle objects to do automation work as a Bundle describes a set of discovered resources and how to process them. The second method here uses a `Bundle` directly and creating them can be a little toilsome.
 
@@ -169,13 +190,14 @@ kubectl delete ValidatingWebhookConfigurations harvester-load-balancer-webhook
 Edit the [Management Cluster config](./fleet/mgmt.yaml) file and set all values appropriately. Note here, unlike the pure helm version, we need to inject some values ourselves into the Bundle CRD. The values we are editing reside in the yaml path `.spec.helm.values`.
 
 Ensure these are set correctly:
-* LoadBalancer values (`control_plane.loadbalancer_gateway` `control_plane.loadbalancer_subnet` `control_plane.vip`) -- ensure your LB IP settings are on the host/mgmt network for now unless you want to add extra routing rules
-* Static IP Network Config (`control_plane.network`) -- note this is an Ubuntu example, Rocky and RHEL look a little different
-* SSH public key (`ssh_pub_key`) -- Ensure you have ownership of the key pair, we'll need it to hop onto the node if something goes wrong
-* VM specs (`control_plane.cpu_count` `control_plane.memory_gb`)
-* Network Name (`network_name`) -- the VM Network you created in Harvester that will host your VMs
-* VM Image Name (`vm.image`) -- the name of the VM image you're using for your nodes.
-* Rancher URL (`control_plane.files[].content`)-- set the embedded rancher URL to a domain you control or at least one you can set in your local `/etc/hosts`
+
+- LoadBalancer values (`control_plane.loadbalancer_gateway` `control_plane.loadbalancer_subnet` `control_plane.vip`) -- ensure your LB IP settings are on the host/mgmt network for now unless you want to add extra routing rules
+- Static IP Network Config (`control_plane.network`) -- note this is an Ubuntu example, Rocky and RHEL look a little different
+- SSH public key (`ssh_pub_key`) -- Ensure you have ownership of the key pair, we'll need it to hop onto the node if something goes wrong
+- VM specs (`control_plane.cpu_count` `control_plane.memory_gb`)
+- Network Name (`network_name`) -- the VM Network you created in Harvester that will host your VMs
+- VM Image Name (`vm.image`) -- the name of the VM image you're using for your nodes.
+- Rancher URL (`control_plane.files[].content`)-- set the embedded rancher URL to a domain you control or at least one you can set in your local `/etc/hosts`
 
 ### Installation
 
@@ -211,7 +233,7 @@ chmod 600 kube.yaml
 
 I check the node state here:
 ```console
-❯ kubectl --kubeconfig kube.yaml get nodes
+$ kubectl --kubeconfig kube.yaml get nodes
 rke2-mgmt-cp-0   Ready    control-plane,etcd,master   2m22s   v1.29.6+rke2r1
 rke2-mgmt-cp-1   Ready    control-plane,etcd,master   65s     v1.29.6+rke2r1
 rke2-mgmt-cp-2   Ready    control-plane,etcd,master   73s     v1.29.6+rke2r1
@@ -219,7 +241,7 @@ rke2-mgmt-cp-2   Ready    control-plane,etcd,master   73s     v1.29.6+rke2r1
 
 Now I check Rancher's state and see that it is running!
 ```console
-❯ kubectl --kubeconfig kube.yaml get po -n cattle-system
+$ kubectl --kubeconfig kube.yaml get po -n cattle-system
 NAME                              READY   STATUS      RESTARTS   AGE
 helm-operation-67v2c              0/2     Completed   0          66s
 helm-operation-9hmjw              0/2     Completed   0          80s
@@ -232,20 +254,24 @@ rancher-webhook-bfd464697-fzhlr   1/1     Running     0          24s
 ```
 
 I can now go to the UI and verify just like in method 1:
-![rancher-booting](images/type2/running_rancher.png)
+
+![Rancher at Boot screen](images/type2/running_rancher.png)
 
 And now I use the `admin` bootstrap password and log into Rancher. Success!
-![rancher-running](images/type2/running_rancher2.png)
+![Rancher Running](images/type2/running_rancher2.png)
 
 ## Installing Rancher Method 3 (CAPI)
 This will cover an experimental and PoC-grade addon for Harvester that can be used to install an RKE2 guest cluster into Harvester directly without requiring any external tools or dependencies outside of what Harvester comes with. This installs a full-blown version of Rancher onto a guest cluster. In the past you would use Terraform or Ansible for this, but now we do not need it.
 
 ### Explanation
-ClusterAPI functions on the notion of using Kubernetes clusters to create other downstream clusters. In this case, I create a CAPI `Management` cluster using a `bootstrap` pattern. I choose to use [Loft Labs vCluster](https://www.vcluster.com) to do this. In short, it creates a cluster inside of Harvester's RKE2 cluster that runs inside of a single pod. As part of that, it will map external ingress/egress into the Pod. vCluster is a very cool technology that is exploding in popularity! I will use it to create a CAPI bootstrap cluster that I then point at my local Harvester cluster to install a guest RKE2 cluster. Note this does not use Helm or any other external tools other than CAPI's Operator.
+ClusterAPI functions on the notion of using Kubernetes clusters to create other downstream clusters. Most patterns of use that you'll find out there involve starting with CAPI using a `KinD` cluster (Kubernetes in Docker). `KinD` and `K3D` are similar to one another in that regard but they both require existing infrastructure on a workstation of some sort. That workstation can come in many flavors whether some kind of bare metal device like a laptop or a VM running somewhere. But they do require docker to be running. I felt given Harvester's nature being that it is already running Kubernetes, that there should be a way to spin up CAPI on Harvester without conflicting with existing CAPI resources that the underlying Rancher application uses (Harvester has a small version of Rancher running that lacks many of the full features and is mainly used for troubleshooting).
+
+Departing with convention is kind of my M.O. so I choose to use [Loft Labs vCluster](https://www.vcluster.com) to create an isolated and temporary cluster on Harvester. In short, it creates a cluster inside of Harvester's RKE2 cluster that runs inside of a single pod. As part of that, it will map external ingress/egress into the Pod (along with many other features that I don't use here). vCluster is a very cool technology that is exploding in popularity! I will use it to create a CAPI bootstrap cluster that I then point at my local Harvester cluster to install a guest RKE2 cluster. Note this does not use Helm or any other external tools other than CAPI's Operator.
 
 CAPI functions on the topology of `Providers`. They 'provide' various capability at different layers in the stack. There are `Infrastructure` providers as well as `Bootstrap` providers and other things. We will utilize the Harvester `Infrastructure Provider` which is currently in Beta and the RKE2 `ControlPlane Provider` which is GA.
 
 There are limitations here:
+
 * The Harvester Infra Provider has a few limitations including
   * Requiring embedding a Harvester kubeconfig with a very specific name in base64 format
   * CPU counts do not reflect actual CPU consumption due to a provisioning bug (desired cpu cores end up being pasted into sockets and threads making true core count ^3 of desired amount)
@@ -263,13 +289,20 @@ This is a cool glimpse at what the future could be in a CAPI world, but it still
 * vcluster uses stateful sets and does not by default clean up its volumes, this can cause issues if you repeatedly use it as the existing kubernetes state of vcluster will be resumed vs being reinstalled. So ensure you delete the PVC
 
 ### Installation
+Harvester's RKE2 and Rancher components expose many cool CRDs under the covers that allow us to do some fun things. One of those things you've seen already in Method 2 inadvertently is the `HelmChart` CRD. The `Bundle` created there essentially wraps one. But we can also create those explicitly. 
+
+Why are `HelmChart` CRDs cool? Well they let us wrap a helmchart declaratively in a `yaml` file. In effect, you never call the `helm` cli, you're allowing RKE2 to manage the stateful-ness of the Helm release for you including installations and upgrades. Fundamentally this is how Fleet and other components work.
+
+Following on with `HelmChart` CRDs there is another called an `Addon`. You can think of an `Addon` CRD as a `HelmChart` that can be toggled. Does this sound familar, because it should! When we enable Harvester Addons inside of the Advanced UI menu, this is exactly what is happening. Now, Addons in the UI have specific glue for Harvester-only Addons that way it can't be abused. But we can still use `Addon` CRDs for our own purposes.
+
+So based on that, I will give an example of using an `Addon` in the UI to install Rancher as well as a static `HelmChart` definition.
 
 #### Addon Mode
 
 Install the addon into the Harvester cluster as-is:
 
 ```bash
-kubectl apply -f addon.yaml
+kubectl apply -f capi/addon.yaml
 ```
 
 Once installed, go to the Harvester Addons menu under Advanced->Addons and click the `...` menu to the right on the `rancher-embedded` addon. Click `Edit Config`.
@@ -325,7 +358,7 @@ You can watch progress using `watch kubectl get po`. It takes a few minutes for 
 
 Once everything is running it will look something like this:
 ```console
-❯ kubectl get po
+$ kubectl get po
 NAME                                                              READY   STATUS             RESTARTS         AGE
 bootstrap-cluster-cluster-api-operator-bfcf86f56-54q-978a8b9abb   1/1     Running            0                3m44s
 caphv-controller-manager-b64f46f7b-w5b87-x-caphv-sys-66f8057b1a   2/2     Running            0                2m55s
@@ -345,13 +378,19 @@ virt-launcher-rke2-mgmt-cp-machine-r2dcm-q649c                    2/2     Runnin
 
 After a short time, you'll see the VMs begin to be created. Note the `virt-launcher` pods that are associated with them. CAPI creates them one after the other.
 
-We need to get the IP address of the load balancer so we can set our rancher DNS entry. We can do that by viewing the LoadBalancer UI in Harvster under Networks->LoadBalancers:
-![lb](images/type3/lb.png)
+We need to get the IP address of the LoadBalancer so we can set our DNS entry. Do this by viewing the LoadBalancer UI under Networks->LoadBalancers:
+![LoadBalancers](images/type3/lb.png)
 
 It says 10.2.0.117. So I will edit my `/etc/hosts` entry to point at the correct IP. I don't want to disrupt my normal DNS entry since I use that elsewhere. etc-hosts entries are good for a temporary test.
 
 I can see that I need to sign in with the bootstrap password here (admin):
-![rancher-boot](images/type3/rancher-running.png)
+![Rancher at Boot screen](images/type3/rancher-running.png)
 
-I sign in and see the Rancher dashboard!
-![rancher-running](images/type3/rancher-running2.png)
+
+I sign in and see the Rancher dashboard, it looks like everything is running!
+![Rancher Running](images/type3/rancher-running2.png)
+
+
+## Conclusion
+
+That concludes this write-up and I hope that my goal of getting you to think deeply about what the future of Infrastructure automation looks like using solutions such as Harvester. New patterns emerge that simplify our ways of working and enhance our ability to automate more and more. Have fun!
