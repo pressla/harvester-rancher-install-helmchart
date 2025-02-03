@@ -333,7 +333,7 @@ cat ~/Downloads/local.yaml | base64
 Once the values are placed into the appropriate fields, hit 'save'. 
 
 #### HelmChart CRD Mode
-Or if you prefer to skip the addon steps, just use the [helmchart file](./helmchart.yaml) directly. This uses the `envsubst` command in order to set your config files inline. I created a snippet for the kubeconfig value that assumes you Harvester kubeconfig is set to a specific context. Feel free to remove the first `use-context` command from the chain if you are only using a single file or just use the instructions in the Addon section for manually download the kubeconfig.
+Or if you prefer to skip the addon steps, just use the [helmchart file](./capi/helmchart.yaml) directly. This uses the `envsubst` command in order to set your config files inline. I created a snippet for the kubeconfig value that assumes you Harvester kubeconfig is set to a specific context. Feel free to remove the first `use-context` command from the chain if you are only using a single file or just use the instructions in the Addon section for manually download the kubeconfig.
 
 ```bash
 export VM_NETWORK="lab-workload"
