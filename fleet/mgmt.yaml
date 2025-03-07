@@ -182,7 +182,7 @@ spec:
         resources:
           requests:
             storage: {{ $.Values.control_plane.node_disk_gb }}Gi
-        storageClassName: longhorn-{{ $.Values.vm.image }}
+        storageClassName: longhorn
         volumeMode: Block
       ---
       apiVersion: kubevirt.io/v1
@@ -191,7 +191,7 @@ spec:
         namespace: {{ $.Values.cluster_namespace }}
         annotations:
           # harvesterhci.io/volumeClaimTemplates: |
-          #   [{"metadata":{"name":"{{ $.Values.cluster_name }}-cp-disk-{{ $i }}","annotations":{"harvesterhci.io/imageId":"{{ $.Values.vm.image_namespace }}/{{ $.Values.vm.image }}","helm.app":"rke2"}},"spec":{"accessModes":["ReadWriteOnce"],"resources":{"requests":{"storage":"{{ $.Values.control_plane.node_disk_gb }}Gi"}},"volumeMode":"Block","storageClassName":"longhorn-{{ $.Values.vm.image }}"}}]
+          #   [{"metadata":{"name":"{{ $.Values.cluster_name }}-cp-disk-{{ $i }}","annotations":{"harvesterhci.io/imageId":"{{ $.Values.vm.image_namespace }}/{{ $.Values.vm.image }}","helm.app":"rke2"}},"spec":{"accessModes":["ReadWriteOnce"],"resources":{"requests":{"storage":"{{ $.Values.control_plane.node_disk_gb }}Gi"}},"volumeMode":"Block","storageClassName":"longhorn"}}]
           # network.harvesterhci.io/ips: '[]'
         labels:
           harvesterhci.io/creator: harvester
@@ -343,7 +343,7 @@ spec:
         namespace: {{ $.Values.cluster_namespace }}
         annotations:
           harvesterhci.io/volumeClaimTemplates: |
-            [{"metadata":{"name":"{{ $.Values.cluster_name }}-worker-disk-{{ $i }}","annotations":{"harvesterhci.io/imageId":"{{ $.Values.vm.image_namespace }}/{{ $.Values.vm.image }}","helm.app":"rke2"}},"spec":{"accessModes":["ReadWriteMany"],"resources":{"requests":{"storage":"{{ $.Values.worker.node_disk_gb }}Gi"}},"volumeMode":"Block","storageClassName":"longhorn-{{ $.Values.vm.image }}"}}]
+            [{"metadata":{"name":"{{ $.Values.cluster_name }}-worker-disk-{{ $i }}","annotations":{"harvesterhci.io/imageId":"{{ $.Values.vm.image_namespace }}/{{ $.Values.vm.image }}","helm.app":"rke2"}},"spec":{"accessModes":["ReadWriteMany"],"resources":{"requests":{"storage":"{{ $.Values.worker.node_disk_gb }}Gi"}},"volumeMode":"Block","storageClassName":"longhorn"}}]
           network.harvesterhci.io/ips: '[]'
         labels:
           harvesterhci.io/creator: harvester

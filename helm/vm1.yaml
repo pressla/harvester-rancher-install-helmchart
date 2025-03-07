@@ -1,0 +1,84 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  annotations:
+    harvesterhci.io/vmRunStrategy: RerunOnFailure
+    harvesterhci.io/volumeClaimTemplates: >-
+      [{"metadata":{"name":"ubuntu-disk-0","annotations":{"harvesterhci.io/imageId":"default/ubuntu"}},"spec":{"accessModes":["ReadWriteMany"],"resources":{"requests":{"storage":"10Gi"}},"volumeMode":"Block","storageClassName":"longhorn-ubuntu"}}]
+  name: ubuntu-vm
+  namespace: default
+  labels:
+    harvesterhci.io/creator: harvester
+spec:
+  runStrategy: RerunOnFailure
+  template:
+    metadata:
+      annotations:
+        harvesterhci.io/sshNames: '["default/r1alex"]'  # References your SSH key
+      labels:
+        harvesterhci.io/vmName: ubuntu-vm
+    spec:
+      architecture: amd64
+      domain:
+        cpu:
+          cores: 2
+          sockets: 1
+          threads: 1
+        devices:
+          disks:
+            - bootOrder: 1
+              disk:
+                bus: virtio
+              name: disk-0
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+          inputs:
+            - bus: usb
+              name: tablet
+              type: tablet
+          interfaces:
+            - masquerade: {}
+              model: virtio
+              name: default
+        features:
+          acpi:
+            enabled: true
+        machine:
+          type: q35
+        resources:
+          limits:
+            cpu: '2'
+            memory: 4Gi
+          requests:
+            cpu: 125m
+            memory: 2730Mi
+      evictionStrategy: LiveMigrateIfPossible
+      hostname: ubuntu-vm
+      networks:
+        - name: default
+          pod: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: disk-0
+          persistentVolumeClaim:
+            claimName: ubuntu-disk-0
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              password: ap
+              chpasswd: { expire: False }
+              ssh_pwauth: True
+              hostname: ubuntu-vm
+---
+# SSH Key ConfigMap (if it doesn't already exist)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: r1alex
+  namespace: default
+  labels:
+    harvesterhci.io/keyPair: "true"  
+data:
+  publicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFUcCNBCR89zztoaHgD1QsdyDYj4pNGWoO0Vnz3KmOaL pressl.alex@imitrix.de"

@@ -12,7 +12,7 @@ kind: VirtualMachine
 metadata:
   annotations:
     harvesterhci.io/vmRunStrategy: RerunOnFailure
-    harvesterhci.io/volumeClaimTemplates: '[{"metadata":{"name":"demo-disk-0-gq2mu","annotations":{"harvesterhci.io/imageId":"default/ubuntu"}},"spec":{"accessModes":["ReadWriteMany"],"resources":{"requests":{"storage":"40Gi"}},"volumeMode":"Block","storageClassName":"longhorn-ubuntu"}}]'
+    harvesterhci.io/volumeClaimTemplates: '[{"metadata":{"name":"demo-disk-0-gq2mu","annotations":{"harvesterhci.io/imageId":"default/ubuntu"}},"spec":{"accessModes":["ReadWriteMany"],"resources":{"requests":{"storage":"40Gi"}},"volumeMode":"Block","storageClassName":"longhorn"}}]'
 <snip>
   name: demo
   namespace: default

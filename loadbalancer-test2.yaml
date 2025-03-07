@@ -1,0 +1,50 @@
+---
+apiVersion: loadbalancer.harvesterhci.io/v1beta1
+kind: IPPool
+metadata:
+  name: external-pool-new
+spec:
+  ranges:
+    - gateway: 192.168.178.1  # Your external gateway IP
+      rangeEnd: 192.168.178.250  # Your chosen VIP
+      rangeStart: 192.168.178.250  # Your chosen VIP
+      subnet: 192.168.178.0/24  # Your external subnet
+  selector: {}
+---
+apiVersion: loadbalancer.harvesterhci.io/v1beta1
+kind: LoadBalancer
+metadata:
+  name: external-lb-new
+  namespace: default
+spec:
+  healthCheck:
+    failureThreshold: 2
+    port: 6443
+    successThreshold: 3
+    timeoutSeconds: 5
+    periodSeconds: 5
+  ipam: pool
+  ipPool: external-pool-new
+  listeners:
+    - name: k8s-api
+      port: 6443
+      protocol: TCP
+      backendPort: 6443
+    - name: http
+      port: 80
+      protocol: TCP
+      backendPort: 80
+    - name: https
+      port: 443
+      protocol: TCP
+      backendPort: 443
+    - name: join
+      port: 9345
+      protocol: TCP
+      backendPort: 9345
+  workloadType: vm
+  backendServerSelector:
+    harvesterhci.io/vmName:
+    - c1-cp-0  # Your first control plane VM
+    - c1-cp-1  # Your second control plane VM
+    - c1-cp-2  # Your third control plane VM

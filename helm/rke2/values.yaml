@@ -27,13 +27,13 @@ vm:
   airgapped_image: false          #! flag to alert helm that your VM image already has the RKE2 install script (and does not need to download it)
 
 
-network_name: host
+network_name: vmnet
 
 control_plane:
   node_count: 1
   cpu_count: 4
   memory_gb: 8
-  node_disk_gb: 40
+  node_disk_gb: 50
   loadbalancer_gateway: 10.10.0.1
   loadbalancer_subnet: 10.10.0.0/24
   files: []
@@ -63,8 +63,8 @@ control_plane:
 worker:
   node_count: 1
   cpu_count: 4
-  memory_gb: 8
-  node_disk_gb: 40
+  memory_gb: 12
+  node_disk_gb: 50
   files: []
   # files:
   # - path: /tmp/test

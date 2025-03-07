@@ -1,0 +1,9 @@
+apiVersion: harvesterhci.io/v1beta1
+kind: VirtualMachineImage
+metadata:
+  name: ubuntu
+  namespace: default
+spec:
+  displayName: Ubuntu 24.04 LTS (Noble Numbat)
+  sourceType: download  
+  url: https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img
