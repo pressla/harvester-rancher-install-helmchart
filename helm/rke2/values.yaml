@@ -34,8 +34,8 @@ control_plane:
   cpu_count: 4
   memory_gb: 8
   node_disk_gb: 50
-  loadbalancer_gateway: 10.10.0.1
-  loadbalancer_subnet: 10.10.0.0/24
+#  loadbalancer_gateway: 10.10.0.1
+#  loadbalancer_subnet: 10.10.0.0/24
   files: []
   # files:
   # - path: /tmp/test

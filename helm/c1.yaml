@@ -1,4 +1,10 @@
 cluster_name: c1
+cluster_namespace: default
+network_name: vmnet
+rke2_version: v1.29.6+rke2r1
+ssh_pub_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFUcCNBCR89zztoaHgD1QsdyDYj4pNGWoO0Vnz3KmOaL pressl.alex@imitrix.de"
+system_default_registry: ""
+
 control_plane:
   files:
   - content: |
@@ -49,8 +55,8 @@ control_plane:
     owner: root
     path: /var/lib/rancher/rke2/server/manifests/rancher.yaml
   ipam: static
-  loadbalancer_gateway: 10.0.2.1
-  loadbalancer_subnet: 10.0.2.0/24
+#  loadbalancer_gateway: 10.0.2.1
+#  loadbalancer_subnet: 10.0.2.0/24
   network:
   - |
     network:
@@ -74,11 +80,7 @@ control_plane:
         enp1s0:
           dhcp4: yes
   node_count: 3
-  vip: 10.0.2.20
-network_name: default
-rke2_version: v1.29.6+rke2r1
-ssh_pub_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFUcCNBCR89zztoaHgD1QsdyDYj4pNGWoO0Vnz3KmOaL pressl.alex@imitrix.de"
-system_default_registry: ""
+#  vip: 10.0.2.20
 vm:
   airgapped_image: false
   image_namespace: default        #! namespace in your harvester cluster containing the vm base image
